@@ -1,20 +1,21 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Terminal Chat</title>
+    <title>Cyber Terminal v2.0</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="loginOverlay" class="login-overlay">
         <div class="login-box">
-            <div class="terminal-header-mini">AUTHENTICATION_REQUIRED</div>
-            <input type="text" id="usernameInput" placeholder="Enter Identity..." autofocus autocomplete="off">
+            <div class="box-header">SYSTEM_CORE_AUTH</div>
+            <p class="status-msg">> Ready for link start...</p>
+            <input type="text" id="usernameInput" placeholder="Identity Code" autofocus autocomplete="off">
             <input type="password" id="passwordInput" placeholder="Passcode (1234)">
-            <button id="loginBtn">INITIALIZE SESSION</button>
-            <p id="loginError" class="error-text">!! UNAUTHORIZED ACCESS !!</p>
+            <button id="loginBtn">LOG_IN</button>
+            <p id="loginError" class="error-text">!! ACCESS DENIED !!</p>
         </div>
     </div>
 
@@ -31,10 +32,10 @@
         <main class="chat-container">
             <header class="chat-header">
                 <button class="menu-toggle" id="menuToggle">☰ NODES</button>
-                <div class="header-info">
-                    <span id="headerUsername">GUEST@TERMINAL</span>
-                    <button id="clearChatBtn" title="Clear Terminal">CLR</button>
+                <div class="header-center">
+                    <span class="glitch-text" id="headerUsername">GUEST@TERMINAL</span>
                 </div>
+                <button id="clearChatBtn">CLR</button>
             </header>
 
             <div class="messages-area" id="chatBox">
@@ -42,7 +43,7 @@
 
             <div class="input-wrapper">
                 <div class="input-area">
-                    <span class="prompt-icon">#</span>
+                    <span class="prompt">#</span>
                     <input type="text" id="userInput" placeholder="Execute command..." autocomplete="off">
                     <button id="sendBtn">
                         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
