@@ -1,12 +1,12 @@
 // 1. Firebase Configuration
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyD2pSTc_MFQ0mPuX-fVBM0j2astCDTm5Og",
+    authDomain: "mysite-2e341.firebaseapp.com",
+    projectId: "mysite-2e341",
+    databaseURL: "https://mysite-2e341-default-rtdb.firebaseio.com", 
+    storageBucket: "mysite-2e341.firebasestorage.app",
+    messagingSenderId: "687955910070",
+    appId: "1:687955910070:web:56d888479ca3caef5a3517"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -98,3 +98,4 @@ function listenForUsers() {
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('active');
 }
+
