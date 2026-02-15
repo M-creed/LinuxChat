@@ -1,57 +1,57 @@
 <!DOCTYPE html>
-<html lang="ar" dir="ltr">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Terminal Chat</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Terminal Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="loginOverlay" class="login-overlay">
         <div class="login-box">
-            <div class="terminal-header-mini">SYSTEM_AUTHENTICATION</div>
-            <p style="color: #4af626; margin-bottom: 10px;">> Identity check required...</p>
-            <input type="text" id="usernameInput" placeholder="Enter Username..." autofocus>
-            <input type="password" id="passwordInput" placeholder="Enter Passcode (1234)...">
-            <button id="loginBtn">EXECUTE LOGIN</button>
-            <p id="loginError" class="error-text">ACCESS DENIED: Invalid Credentials</p>
+            <div class="terminal-header-mini">AUTHENTICATION_REQUIRED</div>
+            <input type="text" id="usernameInput" placeholder="Enter Identity..." autofocus autocomplete="off">
+            <input type="password" id="passwordInput" placeholder="Passcode (1234)">
+            <button id="loginBtn">INITIALIZE SESSION</button>
+            <p id="loginError" class="error-text">!! UNAUTHORIZED ACCESS !!</p>
         </div>
     </div>
 
     <div class="app-wrapper" id="appMain" style="display: none;">
         
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">ONLINE_USERS</div>
+            <div class="sidebar-header">
+                <span>ACTIVE_NODES</span>
+                <button id="closeSidebar">×</button>
+            </div>
             <ul id="usersList"></ul>
         </aside>
 
         <main class="chat-container">
             <header class="chat-header">
-                <button class="menu-toggle" id="menuToggle">☰</button>
-                <div class="status-indicator">
-                    <span class="dot-online"></span>
-                    <span id="headerUsername">USER@TERMINAL</span>
-                </div>
-                <div class="window-controls">
-                    <span class="ctrl close"></span>
-                    <span class="ctrl minimize"></span>
-                    <span class="ctrl maximize"></span>
+                <button class="menu-toggle" id="menuToggle">☰ NODES</button>
+                <div class="header-info">
+                    <span id="headerUsername">GUEST@TERMINAL</span>
+                    <button id="clearChatBtn" title="Clear Terminal">CLR</button>
                 </div>
             </header>
 
-            <div class="messages-area" id="chatBox"></div>
+            <div class="messages-area" id="chatBox">
+                </div>
 
-            <div class="input-area">
-                <span class="prompt-label">>_</span>
-                <input type="text" id="userInput" placeholder="Type command/message..." autocomplete="off">
-                <button id="sendBtn">SEND</button>
+            <div class="input-wrapper">
+                <div class="input-area">
+                    <span class="prompt-icon">#</span>
+                    <input type="text" id="userInput" placeholder="Execute command..." autocomplete="off">
+                    <button id="sendBtn">
+                        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
+                </div>
             </div>
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
