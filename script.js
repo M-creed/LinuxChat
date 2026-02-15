@@ -17,40 +17,35 @@ const db = getDatabase(app);
 let currentUsername = "";
 let isInitialLoad = true;
 
-// الربط البرمجي
+if (Notification.permission !== "granted") Notification.requestPermission();
+
+// ربط الأزرار
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loginBtn').onclick = login;
     document.getElementById('sendBtn').onclick = sendMessage;
-    document.getElementById('clearChatBtn').onclick = () => {
-        document.getElementById('chatBox').innerHTML = '';
-        console.log("Terminal Cleared.");
-    };
+    document.getElementById('clearChatBtn').onclick = () => document.getElementById('chatBox').innerHTML = '';
     
-    document.getElementById('menuToggle').onclick = (e) => {
-        e.stopPropagation();
-        document.getElementById('sidebar').classList.add('active');
-    };
-    
-    document.getElementById('closeSidebar').onclick = () => {
-        document.getElementById('sidebar').classList.remove('active');
-    };
+    const sidebar = document.getElementById('sidebar');
+    document.getElementById('menuToggle').onclick = (e) => { e.stopPropagation(); sidebar.classList.add('active'); };
+    document.getElementById('closeSidebar').onclick = () => sidebar.classList.remove('active');
+    document.body.onclick = () => sidebar.classList.remove('active');
+    sidebar.onclick = (e) => e.stopPropagation();
 
-    document.getElementById('userInput').onkeypress = (e) => {
-        if (e.key === 'Enter') sendMessage();
-    };
+    document.getElementById('userInput').onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
 });
 
 function login() {
-    const userIn = document.getElementById('usernameInput').value;
-    const passIn = document.getElementById('passwordInput').value;
-    if (userIn.trim() !== "" && passIn === "1234") {
-        currentUsername = userIn.toLowerCase();
+    const user = document.getElementById('usernameInput').value.trim();
+    const pass = document.getElementById('passwordInput').value;
+    if (user !== "" && pass === "1234") {
+        currentUsername = user.toLowerCase();
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appMain').style.display = 'flex';
         document.getElementById('headerUsername').innerText = `${currentUsername.toUpperCase()}@TERMINAL`;
         
-        set(ref(db, 'status/' + currentUsername), true);
-        onDisconnect(ref(db, 'status/' + currentUsername)).remove();
+        const statusRef = ref(db, 'status/' + currentUsername);
+        set(statusRef, true);
+        onDisconnect(statusRef).remove();
         startApp();
     } else {
         document.getElementById('loginError').style.display = 'block';
@@ -72,16 +67,22 @@ function sendMessage() {
 
 function startApp() {
     onChildAdded(ref(db, 'messages'), (snapshot) => {
-        renderMessage(snapshot.val());
+        const data = snapshot.val();
+        renderMessage(data);
+        if (!isInitialLoad && data.sender !== currentUsername) {
+            new Notification(`Secure Msg`, { body: `${data.sender}: ${data.content}` });
+            document.title = `(*) New Message`;
+        }
     });
+    setTimeout(() => { isInitialLoad = false; }, 2000);
+
     onValue(ref(db, 'status'), (snapshot) => {
-        const usersList = document.getElementById('usersList');
-        usersList.innerHTML = '';
-        const users = snapshot.val() || {};
-        Object.keys(users).forEach(user => {
+        const list = document.getElementById('usersList');
+        list.innerHTML = '';
+        Object.keys(snapshot.val() || {}).forEach(u => {
             const li = document.createElement('li');
-            li.innerText = user;
-            usersList.appendChild(li);
+            li.innerText = `● ${u.toUpperCase()}`;
+            list.appendChild(li);
         });
     });
 }
@@ -89,9 +90,11 @@ function startApp() {
 function renderMessage(data) {
     const chatBox = document.getElementById('chatBox');
     const isMe = data.sender === currentUsername;
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
-    msgDiv.innerHTML = `<span class="msg-user">${data.sender.toUpperCase()}</span>${data.content}<span class="time">${data.time}</span>`;
-    chatBox.appendChild(msgDiv);
+    const div = document.createElement('div');
+    div.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
+    div.innerHTML = `<span class="msg-user">${data.sender.toUpperCase()}</span>${data.content}<span class="time">${data.time}</span>`;
+    chatBox.appendChild(div);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+window.onfocus = () => document.title = `Cyber Terminal v2.0`;
