@@ -16,7 +16,7 @@ const firebaseConfig = {
 // طلب إذن التنبيهات عند تحميل الصفحة
 if (Notification.permission !== "granted") {
     Notification.requestPermission();
-}
+};
 // 3. تشغيل Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -175,4 +175,5 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
+
 
