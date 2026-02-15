@@ -1,9 +1,9 @@
-// 1. استيراد المكتبات من Firebase
+// 1. استيراد المكتبات من Firebase (Modular SDK)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, serverTimestamp } 
        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// 2. إعدادات Firebase (ضع بياناتك هنا)
+// 2. إعدادات Firebase الخاصة بك
 const firebaseConfig = {
     apiKey: "AIzaSyD2pSTc_MFQ0mPuX-fVBM0j2astCDTm5Og",
     authDomain: "mysite-2e341.firebaseapp.com",
@@ -26,7 +26,7 @@ const login = () => {
     const passIn = document.getElementById('passwordInput').value;
     const errorMsg = document.getElementById('loginError');
 
-    console.log("Attempting login..."); // للتأكد في الـ Console أن الدالة تعمل
+    console.log("Attempting login..."); // لمراقبة الحالة في الـ Console
 
     if (userIn.trim() !== "" && passIn === "1234") {
         currentUsername = userIn.toLowerCase();
@@ -34,12 +34,12 @@ const login = () => {
         document.getElementById('appMain').style.display = 'flex';
         document.getElementById('headerUsername').innerText = `${currentUsername.toUpperCase()}@TERMINAL`;
         
-        // تحديث الحالة لـ Online في القاعدة
+        // تسجيل المستخدم كـ Online في الـ Database
         const userStatusRef = ref(db, 'status/' + currentUsername);
         set(userStatusRef, true);
         onDisconnect(userStatusRef).remove();
 
-        startApp(); // تشغيل استماع الرسائل
+        startApp(); // بدء استلام الرسائل والمستخدمين
     } else {
         errorMsg.style.display = 'block';
     }
@@ -62,15 +62,17 @@ const sendMessage = () => {
     }
 };
 
-// 6. تشغيل المستمعات بعد الدخول
+// 6. تشغيل المهام بعد الدخول الناجح
 function startApp() {
     const messagesRef = ref(db, 'messages');
     const statusRef = ref(db, 'status');
 
+    // استلام الرسائل وعرضها
     onChildAdded(messagesRef, (snapshot) => {
         renderMessage(snapshot.val());
     });
 
+    // تحديث قائمة المستخدمين أونلاين
     onValue(statusRef, (snapshot) => {
         const usersList = document.getElementById('usersList');
         usersList.innerHTML = '';
@@ -83,28 +85,50 @@ function startApp() {
     });
 }
 
+// 7. رسم الرسالة في الشاشة (يمين أو شمال)
 function renderMessage(data) {
     const chatBox = document.getElementById('chatBox');
+    if (!chatBox) return;
+
     const isMe = data.sender === currentUsername;
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
+    
     msgDiv.innerHTML = `
         <span class="msg-user">${data.sender.toUpperCase()}</span>
         <span class="msg-text">${data.content}</span>
         <span class="time">${data.time}</span>
     `;
+    
     chatBox.appendChild(msgDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 7. الربط اليدوي بالأزرار (لأننا نستخدم Module)
+// 8. الربط البرمجي (لحل مشكلة Login is not defined)
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('loginBtn').onclick = login;
-    document.getElementById('sendBtn').onclick = sendMessage;
-    document.getElementById('menuToggle').onclick = () => {
-        document.getElementById('sidebar').classList.toggle('active');
-    };
-    document.getElementById('userInput').onkeypress = (e) => {
-        if (e.key === 'Enter') sendMessage();
-    };
+    console.log("Terminal Script Ready...");
+
+    // ربط زر الدخول
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) loginBtn.onclick = login;
+
+    // ربط زر الإرسال
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) sendBtn.onclick = sendMessage;
+
+    // ربط زر القائمة الجانبية للموبايل
+    const menuToggle = document.getElementById('menuToggle');
+    if (menuToggle) {
+        menuToggle.onclick = () => {
+            document.getElementById('sidebar').classList.toggle('active');
+        };
+    }
+
+    // السماح بالإرسال عند ضغط Enter
+    const userInput = document.getElementById('userInput');
+    if (userInput) {
+        userInput.onkeypress = (e) => {
+            if (e.key === 'Enter') sendMessage();
+        };
+    }
 });
