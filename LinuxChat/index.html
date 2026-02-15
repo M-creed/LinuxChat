@@ -1,45 +1,47 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Terminal Chat</title>
+    <title>Linux Terminal Chat | Secure</title>
+    
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
     <div id="loginOverlay" class="login-overlay">
         <div class="login-box">
-            <div class="terminal-header-mini">SYSTEM_AUTHENTICATION</div>
-            <p>> Identity check required...</p>
-            <input type="text" id="usernameInput" placeholder="Enter Username..." autofocus>
-            <input type="password" id="passwordInput" placeholder="Enter Passcode (1234)...">
-            <button onclick="login()">EXECUTE LOGIN</button>
-            <p id="loginError" class="error-text">ACCESS DENIED: Invalid Credentials</p>
+            <div class="terminal-header-mini">SYSTEM_AUTH_REQUIRED</div>
+            <p class="typing-text">> Initializing secure tunnel...</p>
+            <p class="typing-text">> Identity check required:</p>
+            <input type="text" id="usernameInput" placeholder="User Name" autofocus autocomplete="off">
+            <input type="password" id="passwordInput" placeholder="Passcode">
+            <button id="loginBtn">EXECUTE LOGIN</button>
+            <p id="loginError" class="error-text">!! ACCESS DENIED !!</p>
         </div>
     </div>
 
     <div class="app-wrapper" id="appMain" style="display: none;">
         
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">ONLINE_USERS</div>
+            <div class="sidebar-header">ACTIVE_NODES</div>
             <ul id="usersList">
                 </ul>
         </aside>
 
         <main class="chat-container">
             <header class="chat-header">
-                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <button class="menu-toggle" id="menuToggle">☰</button>
+                
                 <div class="status-indicator">
                     <span class="dot-online"></span>
-                    <span id="headerUsername">USER@TERMINAL</span>
+                    <span id="headerUsername">GUEST@TERMINAL</span>
                 </div>
+
                 <div class="window-controls">
-                    <span class="ctrl close"></span>
-                    <span class="ctrl minimize"></span>
-                    <span class="ctrl maximize"></span>
+                    <span class="ctrl red"></span>
+                    <span class="ctrl yellow"></span>
+                    <span class="ctrl green"></span>
                 </div>
             </header>
 
@@ -47,13 +49,13 @@
                 </div>
 
             <div class="input-area">
-                <span class="prompt-label">>_</span>
-                <input type="text" id="userInput" placeholder="Type command/message..." autocomplete="off">
-                <button id="sendBtn" onclick="sendMessage()">SEND</button>
+                <span class="prompt-label">root@remote:~#</span>
+                <input type="text" id="userInput" placeholder="Send a command..." autocomplete="off">
+                <button id="sendBtn">SEND</button>
             </div>
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
