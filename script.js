@@ -1,4 +1,4 @@
-// 1. Firebase Configuration
+// بيانات فايربيس الخاصة بك
 const firebaseConfig = {
     apiKey: "AIzaSyD2pSTc_MFQ0mPuX-fVBM0j2astCDTm5Og",
     authDomain: "mysite-2e341.firebaseapp.com",
@@ -9,39 +9,48 @@ const firebaseConfig = {
     appId: "1:687955910070:web:56d888479ca3caef5a3517"
 };
 
+// تهيئة فايربيس
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
-
 let currentUsername = "";
 
-// 2. Login Logic
-function login() {
-    const userIn = document.getElementById('usernameInput').value;
+// ربط العناصر
+const loginBtn = document.getElementById('loginBtn');
+const sendBtn = document.getElementById('sendBtn');
+const userInput = document.getElementById('userInput');
+const menuToggle = document.getElementById('menuToggle');
+
+// تسجيل الدخول
+loginBtn.addEventListener('click', () => {
+    const userIn = document.getElementById('usernameInput').value.trim();
     const passIn = document.getElementById('passwordInput').value;
     const errorMsg = document.getElementById('loginError');
 
-    if (userIn.trim() !== "" && passIn === "1234") {
+    if (userIn !== "" && passIn === "1234") {
         currentUsername = userIn.toLowerCase();
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appMain').style.display = 'flex';
-        document.getElementById('headerUsername').innerText = `${currentUsername.toUpperCase()}@TERMINAL`;
+        document.getElementById('headerUsername').innerText = currentUsername.toUpperCase() + "@TERMINAL";
         
-        // تسجيل المستخدم كـ Online
-        database.ref('status/' + currentUsername).set(true);
-        database.ref('status/' + currentUsername).onDisconnect().remove();
+        // تحديث حالة الأونلاين
+        const statusRef = database.ref('status/' + currentUsername);
+        statusRef.set(true);
+        statusRef.onDisconnect().remove();
 
-        listenForMessages();
-        listenForUsers();
+        startApp();
     } else {
         errorMsg.style.display = 'block';
     }
+});
+
+function startApp() {
+    listenForMessages();
+    listenForUsers();
 }
 
-// 3. Messaging Logic
-function sendMessage() {
-    const input = document.getElementById('userInput');
-    const text = input.value.trim();
-    
+// إرسال الرسالة
+function performSend() {
+    const text = userInput.value.trim();
     if (text !== "") {
         database.ref('messages').push({
             sender: currentUsername,
@@ -49,53 +58,47 @@ function sendMessage() {
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             timestamp: Date.now()
         });
-        input.value = '';
+        userInput.value = '';
     }
 }
 
-// ارسال بالضغط على Enter
-document.getElementById('userInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
-});
+sendBtn.addEventListener('click', performSend);
+userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSend(); });
 
+// استقبال الرسائل
 function listenForMessages() {
     database.ref('messages').limitToLast(50).on('child_added', (snapshot) => {
         const data = snapshot.val();
-        renderMessage(data);
+        const chatBox = document.getElementById('chatBox');
+        const isMe = data.sender === currentUsername;
+        
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
+        msgDiv.innerHTML = `
+            <span class="msg-user">${data.sender.toUpperCase()}</span>
+            <span class="msg-text">${data.content}</span>
+            <span class="time">${data.time}</span>
+        `;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
     });
 }
 
-function renderMessage(data) {
-    const chatBox = document.getElementById('chatBox');
-    const isMe = data.sender === currentUsername;
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
-    
-    msgDiv.innerHTML = `
-        <span class="msg-user">${data.sender.toUpperCase()}</span>
-        <span class="msg-text">${data.content}</span>
-        <span class="time">${data.time}</span>
-    `;
-    
-    chatBox.appendChild(msgDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// 4. Sidebar Logic (Online Users)
+// قائمة المستخدمين
 function listenForUsers() {
     database.ref('status').on('value', (snapshot) => {
-        const usersList = document.getElementById('usersList');
-        usersList.innerHTML = '';
+        const list = document.getElementById('usersList');
+        list.innerHTML = '';
         const users = snapshot.val() || {};
-        Object.keys(users).forEach(user => {
+        Object.keys(users).forEach(u => {
             const li = document.createElement('li');
-            li.innerText = user;
-            usersList.appendChild(li);
+            li.innerText = "> " + u;
+            list.appendChild(li);
         });
     });
 }
 
-function toggleSidebar() {
+// فتح القائمة الجانبية في الموبايل
+menuToggle.addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('active');
-}
-
+});
