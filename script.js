@@ -1,73 +1,89 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, serverTimestamp } 
-       from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
+// 1. Firebase Configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyD2pSTc_MFQ0mPuX-fVBM0j2astCDTm5Og",
-    authDomain: "mysite-2e341.firebaseapp.com",
-    projectId: "mysite-2e341",
-    databaseURL: "https://mysite-2e341-default-rtdb.firebaseio.com", 
-    storageBucket: "mysite-2e341.firebasestorage.app",
-    messagingSenderId: "687955910070",
-    appId: "1:687955910070:web:56d888479ca3caef5a3517"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_ID",
+    appId: "YOUR_APP_ID"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 let currentUsername = "";
-let isInitialLoad = true;
 
-// طلب إذن التنبيهات
-if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-    Notification.requestPermission();
-};
-
-// دالة تسجيل الدخول
-const login = () => {
+// 2. Login Logic
+function login() {
     const userIn = document.getElementById('usernameInput').value;
     const passIn = document.getElementById('passwordInput').value;
+    const errorMsg = document.getElementById('loginError');
+
     if (userIn.trim() !== "" && passIn === "1234") {
         currentUsername = userIn.toLowerCase();
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appMain').style.display = 'flex';
         document.getElementById('headerUsername').innerText = `${currentUsername.toUpperCase()}@TERMINAL`;
         
-        const userStatusRef = ref(db, 'status/' + currentUsername);
-        set(userStatusRef, true);
-        onDisconnect(userStatusRef).remove();
-        startApp();
-    } else {
-        document.getElementById('loginError').style.display = 'block';
-    }
-};
+        // تسجيل المستخدم كـ Online
+        database.ref('status/' + currentUsername).set(true);
+        database.ref('status/' + currentUsername).onDisconnect().remove();
 
-// إرسال الرسالة
-const sendMessage = () => {
+        listenForMessages();
+        listenForUsers();
+    } else {
+        errorMsg.style.display = 'block';
+    }
+}
+
+// 3. Messaging Logic
+function sendMessage() {
     const input = document.getElementById('userInput');
     const text = input.value.trim();
+    
     if (text !== "") {
-        push(ref(db, 'messages'), {
+        database.ref('messages').push({
             sender: currentUsername,
             content: text,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            timestamp: serverTimestamp()
+            timestamp: Date.now()
         });
         input.value = '';
     }
-};
+}
 
-// تشغيل المستمعات
-function startApp() {
-    onChildAdded(ref(db, 'messages'), (snapshot) => {
+// ارسال بالضغط على Enter
+document.getElementById('userInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+});
+
+function listenForMessages() {
+    database.ref('messages').limitToLast(50).on('child_added', (snapshot) => {
         const data = snapshot.val();
         renderMessage(data);
-        if (!isInitialLoad && data.sender !== currentUsername) {
-            showNotification(data.sender, data.content);
-        }
     });
-    setTimeout(() => { isInitialLoad = false; }, 2000);
+}
 
-    onValue(ref(db, 'status'), (snapshot) => {
+function renderMessage(data) {
+    const chatBox = document.getElementById('chatBox');
+    const isMe = data.sender === currentUsername;
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
+    
+    msgDiv.innerHTML = `
+        <span class="msg-user">${data.sender.toUpperCase()}</span>
+        <span class="msg-text">${data.content}</span>
+        <span class="time">${data.time}</span>
+    `;
+    
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// 4. Sidebar Logic (Online Users)
+function listenForUsers() {
+    database.ref('status').on('value', (snapshot) => {
         const usersList = document.getElementById('usersList');
         usersList.innerHTML = '';
         const users = snapshot.val() || {};
@@ -79,46 +95,6 @@ function startApp() {
     });
 }
 
-function showNotification(sender, message) {
-    document.title = `(*) رسالة من ${sender}`;
-    if (Notification.permission === "granted") {
-        new Notification(`Terminal Message`, { body: `${sender}: ${message}` });
-    }
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('active');
 }
-
-window.onfocus = () => { document.title = `Linux Terminal Chat`; };
-
-function renderMessage(data) {
-    const chatBox = document.getElementById('chatBox');
-    const isMe = data.sender === currentUsername;
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
-    msgDiv.innerHTML = `<span class="msg-user">${data.sender.toUpperCase()}</span>${data.content}<span class="time">${data.time}</span>`;
-    chatBox.appendChild(msgDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// الربط البرمجي للأزرار
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('loginBtn').onclick = login;
-    document.getElementById('sendBtn').onclick = sendMessage;
-    
-    const menuToggle = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    
-    if (menuToggle) {
-        menuToggle.onclick = (e) => {
-            e.stopPropagation();
-            sidebar.classList.toggle('active');
-        };
-    }
-
-    // إغلاق القائمة عند الضغط على الشات في الموبايل
-    document.getElementById('chatBox').onclick = () => {
-        sidebar.classList.remove('active');
-    };
-
-    document.getElementById('userInput').onkeypress = (e) => {
-        if (e.key === 'Enter') sendMessage();
-    };
-});
