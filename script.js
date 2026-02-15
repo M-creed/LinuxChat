@@ -13,7 +13,10 @@ const firebaseConfig = {
     messagingSenderId: "687955910070",
     appId: "1:687955910070:web:56d888479ca3caef5a3517"
 };
-
+// طلب إذن التنبيهات عند تحميل الصفحة
+if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+}
 // 3. تشغيل Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -39,7 +42,47 @@ const login = () => {
         set(userStatusRef, true);
         onDisconnect(userStatusRef).remove();
 
-        startApp(); // بدء استلام الرسائل والمستخدمين
+        function startApp() {
+    const messagesRef = ref(db, 'messages');
+    
+    // متغير عشان نتجنب التنبيهات للرسائل القديمة أول ما نفتح
+    let isInitialLoad = true;
+    
+    onChildAdded(messagesRef, (snapshot) => {
+        const data = snapshot.val();
+        renderMessage(data);
+
+        // إرسال تنبيه فقط لو:
+        // 1. التحميل الأولي خلص (عشان ما يجيلكش 100 نوتفكيشن أول ما تفتح)
+        // 2. اللي باعت الرسالة مش "أنا"
+        // 3. المستخدم مش فاتح التاب حالياً (أو حتى لو فاتحها وعايز تنبيه)
+        if (!isInitialLoad && data.sender !== currentUsername) {
+            showNotification(data.sender, data.content);
+        }
+    });
+
+    // بعد ثانيتين نعتبر إن التحميل الأولي خلص
+    setTimeout(() => { isInitialLoad = false; }, 2000);
+    
+    // ... باقي كود الـ onValue للمستخدمين أونلاين ...
+}
+
+// دالة إظهار التنبيه
+function showNotification(sender, message) {
+       document.title = `(*) رسالة جديدة - Terminal`;
+// ونرجع العنوان الأصلي لما يضغط على الشات
+window.onfocus = () => { document.title = `Linux Terminal Chat`; };
+    if (Notification.permission === "granted") {
+        const notification = new Notification(`رسالة جديدة من ${sender.toUpperCase()}`, {
+            body: message,
+            icon: "https://cdn-icons-png.flaticon.com/512/906/906206.png" // يمكنك تغيير الأيقونة
+        });
+
+        notification.onclick = () => {
+            window.focus(); // يفتح التاب لما تدوس على التنبيه
+        };
+    }
+}
     } else {
         errorMsg.style.display = 'block';
     }
@@ -132,3 +175,4 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
+
