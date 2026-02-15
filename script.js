@@ -13,15 +13,17 @@ const firebaseConfig = {
     messagingSenderId: "687955910070",
     appId: "1:687955910070:web:56d888479ca3caef5a3517"
 };
-// طلب إذن التنبيهات عند تحميل الصفحة
-if (Notification.permission !== "granted") {
-    Notification.requestPermission();
-};
-// 3. تشغيل Firebase
+
+// 3. تشغيل Firebase والطلبات الأولية
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
 let currentUsername = "";
+let isInitialLoad = true; // لمنع تنبيهات الرسايل القديمة
+
+// طلب إذن التنبيهات
+if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+    Notification.requestPermission();
+}
 
 // 4. دالة تسجيل الدخول
 const login = () => {
@@ -29,60 +31,18 @@ const login = () => {
     const passIn = document.getElementById('passwordInput').value;
     const errorMsg = document.getElementById('loginError');
 
-    console.log("Attempting login..."); // لمراقبة الحالة في الـ Console
-
     if (userIn.trim() !== "" && passIn === "1234") {
         currentUsername = userIn.toLowerCase();
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appMain').style.display = 'flex';
         document.getElementById('headerUsername').innerText = `${currentUsername.toUpperCase()}@TERMINAL`;
         
-        // تسجيل المستخدم كـ Online في الـ Database
+        // تسجيل المستخدم أونلاين
         const userStatusRef = ref(db, 'status/' + currentUsername);
         set(userStatusRef, true);
         onDisconnect(userStatusRef).remove();
 
-        function startApp() {
-    const messagesRef = ref(db, 'messages');
-    
-    // متغير عشان نتجنب التنبيهات للرسائل القديمة أول ما نفتح
-    let isInitialLoad = true;
-    
-    onChildAdded(messagesRef, (snapshot) => {
-        const data = snapshot.val();
-        renderMessage(data);
-
-        // إرسال تنبيه فقط لو:
-        // 1. التحميل الأولي خلص (عشان ما يجيلكش 100 نوتفكيشن أول ما تفتح)
-        // 2. اللي باعت الرسالة مش "أنا"
-        // 3. المستخدم مش فاتح التاب حالياً (أو حتى لو فاتحها وعايز تنبيه)
-        if (!isInitialLoad && data.sender !== currentUsername) {
-            showNotification(data.sender, data.content);
-        }
-    });
-
-    // بعد ثانيتين نعتبر إن التحميل الأولي خلص
-    setTimeout(() => { isInitialLoad = false; }, 2000);
-    
-    // ... باقي كود الـ onValue للمستخدمين أونلاين ...
-}
-
-// دالة إظهار التنبيه
-function showNotification(sender, message) {
-       document.title = `(*) رسالة جديدة - Terminal`;
-// ونرجع العنوان الأصلي لما يضغط على الشات
-window.onfocus = () => { document.title = `Linux Terminal Chat`; };
-    if (Notification.permission === "granted") {
-        const notification = new Notification(`رسالة جديدة من ${sender.toUpperCase()}`, {
-            body: message,
-            icon: "https://cdn-icons-png.flaticon.com/512/906/906206.png" // يمكنك تغيير الأيقونة
-        });
-
-        notification.onclick = () => {
-            window.focus(); // يفتح التاب لما تدوس على التنبيه
-        };
-    }
-}
+        startApp(); 
     } else {
         errorMsg.style.display = 'block';
     }
@@ -105,19 +65,29 @@ const sendMessage = () => {
     }
 };
 
-// 6. تشغيل المهام بعد الدخول الناجح
+// 6. تشغيل المهام (استلام الرسايل والمستخدمين)
 function startApp() {
     const messagesRef = ref(db, 'messages');
     const statusRef = ref(db, 'status');
 
-    // استلام الرسائل وعرضها
+    // استلام الرسايل
     onChildAdded(messagesRef, (snapshot) => {
-        renderMessage(snapshot.val());
+        const data = snapshot.val();
+        renderMessage(data);
+
+        // إرسال تنبيه لو مش أنا اللي باعت والتحميل الأولي خلص
+        if (!isInitialLoad && data.sender !== currentUsername) {
+            showNotification(data.sender, data.content);
+        }
     });
 
-    // تحديث قائمة المستخدمين أونلاين
+    // تحميل الرسايل القديمة بياخد وقت بسيط، بعدها نفعل التنبيهات
+    setTimeout(() => { isInitialLoad = false; }, 2000);
+
+    // تحديث قائمة المتصلين
     onValue(statusRef, (snapshot) => {
         const usersList = document.getElementById('usersList');
+        if (!usersList) return;
         usersList.innerHTML = '';
         const users = snapshot.val() || {};
         Object.keys(users).forEach(user => {
@@ -128,7 +98,30 @@ function startApp() {
     });
 }
 
-// 7. رسم الرسالة في الشاشة (يمين أو شمال)
+// 7. إظهار التنبيه وتغيير العنوان
+function showNotification(sender, message) {
+    // تغيير عنوان التاب
+    document.title = `(*) رسالة جديدة من ${sender}`;
+    
+    if (Notification.permission === "granted") {
+        const notification = new Notification(`Secure Terminal`, {
+            body: `${sender.toUpperCase()}: ${message}`,
+            icon: "https://cdn-icons-png.flaticon.com/512/906/906206.png"
+        });
+
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+        };
+    }
+}
+
+// رجوع العنوان للأصلي عند الدخول للصفحة
+window.onfocus = () => { 
+    document.title = `Linux Terminal Chat`; 
+};
+
+// 8. رسم الرسايل
 function renderMessage(data) {
     const chatBox = document.getElementById('chatBox');
     if (!chatBox) return;
@@ -147,19 +140,14 @@ function renderMessage(data) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 8. الربط البرمجي (لحل مشكلة Login is not defined)
+// 9. ربط الأزرار برمجياً
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Terminal Script Ready...");
-
-    // ربط زر الدخول
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) loginBtn.onclick = login;
 
-    // ربط زر الإرسال
     const sendBtn = document.getElementById('sendBtn');
     if (sendBtn) sendBtn.onclick = sendMessage;
 
-    // ربط زر القائمة الجانبية للموبايل
     const menuToggle = document.getElementById('menuToggle');
     if (menuToggle) {
         menuToggle.onclick = () => {
@@ -167,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // السماح بالإرسال عند ضغط Enter
     const userInput = document.getElementById('userInput');
     if (userInput) {
         userInput.onkeypress = (e) => {
@@ -175,5 +162,3 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
-
-
