@@ -16,7 +16,7 @@
             <p>> Identity check required...</p>
             <input type="text" id="usernameInput" placeholder="Enter Username..." autofocus>
             <input type="password" id="passwordInput" placeholder="Enter Passcode (1234)...">
-            <button onclick="login()">EXECUTE LOGIN</button>
+            <button id="loginBtn">EXECUTE LOGIN</button>
             <p id="loginError" class="error-text">ACCESS DENIED: Invalid Credentials</p>
         </div>
     </div>
@@ -49,11 +49,12 @@
             <div class="input-area">
                 <span class="prompt-label">>_</span>
                 <input type="text" id="userInput" placeholder="Type command/message..." autocomplete="off">
-                <button id="sendBtn" onclick="sendMessage()">SEND</button>
+                <button id="sendBtn">SEND</button>
             </div>
         </main>
     </div>
 
     <script src="script.js"></script>
 </body>
+
 </html>
