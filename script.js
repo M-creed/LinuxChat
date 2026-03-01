@@ -1,87 +1,142 @@
-:root {
-    --bg-dark: #080a0f;
-    --neon-cyan: #00f3ff;
-    --neon-purple: #bc13fe;
-    --neon-red: #ff4444;
-    --border: rgba(0, 243, 255, 0.2);
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, onChildChanged, set, onDisconnect, onValue, serverTimestamp, remove, update } 
+       from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyD2pSTc_MFQ0mPuX-fVBM0j2astCDTm5Og",
+    authDomain: "mysite-2e341.firebaseapp.com",
+    projectId: "mysite-2e341",
+    databaseURL: "https://mysite-2e341-default-rtdb.firebaseio.com", 
+    storageBucket: "mysite-2e341.firebasestorage.app",
+    messagingSenderId: "687955910070",
+    appId: "1:687955910070:web:56d888479ca3caef5a3517"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+let currentUsername = "";
+let isInitialLoad = true;
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('loginBtn').onclick = login;
+    document.getElementById('sendBtn').onclick = sendMessage;
+    document.getElementById('clearChatBtn').onclick = purgeData;
+    
+    const sidebar = document.getElementById('sidebar');
+    document.getElementById('menuToggle').onclick = (e) => { e.stopPropagation(); sidebar.classList.add('active'); };
+    document.getElementById('closeSidebar').onclick = () => sidebar.classList.remove('active');
+    document.body.onclick = () => sidebar.classList.remove('active');
+    
+    document.getElementById('userInput').onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+});
+
+function login() {
+    const user = document.getElementById('usernameInput').value.trim();
+    if (user !== "" && document.getElementById('passwordInput').value === "1234") {
+        currentUsername = user.toLowerCase();
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('appMain').style.display = 'flex';
+        document.getElementById('headerUsername').innerText = `${currentUsername.toUpperCase()}@TERMINAL`;
+        
+        const statusRef = ref(db, 'status/' + currentUsername);
+        set(statusRef, true);
+        onDisconnect(statusRef).remove();
+        startApp();
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+    }
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+function sendMessage() {
+    const input = document.getElementById('userInput');
+    const content = input.value.trim();
+    if (content !== "") {
+        // فحص عدد المستخدمين Online لتحديد الحالة الابتدائية (Sent أو Delivered)
+        onValue(ref(db, 'status'), (snapshot) => {
+            const onlineCount = Object.keys(snapshot.val() || {}).length;
+            const initialStatus = onlineCount > 1 ? 'delivered' : 'sent';
 
-body {
-    background-color: var(--bg-dark);
-    background-image: radial-gradient(var(--neon-cyan) 0.5px, transparent 0);
-    background-size: 30px 30px;
-    font-family: 'Courier New', monospace;
-    height: 100dvh; color: white; overflow: hidden;
-    display: flex; flex-direction: column;
+            push(ref(db, 'messages'), {
+                sender: currentUsername,
+                content: content,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: initialStatus,
+                timestamp: serverTimestamp()
+            });
+        }, { onlyOnce: true });
+
+        input.value = '';
+        input.focus();
+    }
 }
 
-/* Login Overlay */
-.login-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; align-items: center; justify-content: center; }
-.login-box { 
-    width: 90%; max-width: 350px; padding: 30px; background: #0a0c10; 
-    border: 1px solid var(--neon-cyan); box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
-}
-.box-header { color: var(--neon-cyan); font-weight: bold; margin-bottom: 20px; text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-.login-box input { 
-    width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #222; 
-    color: var(--neon-cyan); outline: none; font-size: 16px; 
-}
-.login-box button { width: 100%; padding: 12px; background: var(--neon-cyan); color: #000; border: none; font-weight: bold; cursor: pointer; }
-.error-text { color: var(--neon-red); display: none; text-align: center; margin-top: 10px; font-size: 12px; }
+function startApp() {
+    const chatBox = document.getElementById('chatBox');
 
-/* Sidebar */
-.sidebar {
-    position: fixed; left: -280px; top: 0; bottom: 0; width: 260px;
-    background: rgba(10, 12, 16, 0.95); backdrop-filter: blur(10px);
-    border-right: 1px solid var(--neon-cyan); z-index: 2000; transition: 0.4s; padding: 20px;
-}
-.sidebar.active { left: 0; }
-.sidebar-header { display: flex; justify-content: space-between; color: var(--neon-cyan); margin-bottom: 20px; font-weight: bold; }
-#closeSidebar { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
-#usersList li { padding: 10px; border-bottom: 1px solid var(--border); font-size: 13px; color: #888; list-style: none; }
+    // استلام الرسائل
+    onChildAdded(ref(db, 'messages'), (snapshot) => {
+        const data = snapshot.val();
+        const msgKey = snapshot.key;
+        renderMessage(data, msgKey);
 
-/* Main Chat Container */
-.chat-container { display: flex; flex-direction: column; height: 100%; width: 100%; position: relative; }
-.chat-header { 
-    height: 60px; display: flex; align-items: center; justify-content: space-between; 
-    padding: 0 15px; background: rgba(0,0,0,0.8); border-bottom: 1px solid var(--border); z-index: 10;
-}
-.menu-toggle { background: none; border: 1px solid var(--neon-cyan); color: var(--neon-cyan); padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        // إذا كانت الرسالة من طرف آخر، نحولها لـ seen
+        if (data.sender !== currentUsername && data.status !== 'seen') {
+            update(ref(db, `messages/${msgKey}`), { status: 'seen' });
+        }
+    });
 
-/* Purge Button Style */
-#clearChatBtn {
-    background: transparent; border: 1px solid var(--neon-red); color: var(--neon-red);
-    padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;
-    display: flex; align-items: center; gap: 5px; transition: 0.3s;
-}
-#clearChatBtn svg { fill: var(--neon-red); }
-#clearChatBtn:hover { background: rgba(255, 68, 68, 0.1); box-shadow: 0 0 10px var(--neon-red); }
+    // تحديث الحالة فوراً عند تغييرها في السيرفر (من Delivered لـ Seen مثلاً)
+    onChildChanged(ref(db, 'messages'), (snapshot) => {
+        const data = snapshot.val();
+        const dot = document.getElementById(`dot-${snapshot.key}`);
+        if (dot) {
+            dot.className = `status-dot status-${data.status}`;
+        }
+    });
 
-/* Messages Area & Scrolling */
-.messages-area { 
-    flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; 
-    gap: 15px; padding-bottom: 100px; scroll-behavior: smooth;
-}
-.messages-area::-webkit-scrollbar { width: 4px; }
-.messages-area::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 10px; }
+    setTimeout(() => { isInitialLoad = false; scrollToBottom(); }, 2000);
 
-/* Message Bubbles */
-.message { max-width: 85%; padding: 12px 18px; border-radius: 15px; font-size: 14px; line-height: 1.5; border: 1px solid transparent; }
-.my-msg { align-self: flex-end; background: rgba(188, 19, 254, 0.1); border-color: var(--neon-purple); box-shadow: 0 0 10px rgba(188, 19, 254, 0.2); border-bottom-right-radius: 2px; }
-.client-msg { align-self: flex-start; background: rgba(0, 243, 255, 0.1); border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); border-bottom-left-radius: 2px; }
-.msg-user { display: block; font-weight: bold; color: var(--neon-cyan); font-size: 11px; margin-bottom: 5px; }
-.time { display: block; font-size: 9px; opacity: 0.4; text-align: right; margin-top: 5px; }
-
-/* Input Wrapper */
-.input-wrapper { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: center; padding: 0 15px; z-index: 20; }
-.input-area { 
-    width: 100%; max-width: 600px; background: rgba(15, 17, 23, 0.95); backdrop-filter: blur(10px);
-    border: 2px solid var(--neon-cyan); border-radius: 50px; display: flex; align-items: center; padding: 5px 15px; box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+    onValue(ref(db, 'status'), (snapshot) => {
+        const list = document.getElementById('usersList');
+        list.innerHTML = '';
+        Object.keys(snapshot.val() || {}).forEach(u => {
+            const li = document.createElement('li');
+            li.innerText = `● ${u.toUpperCase()}`;
+            list.appendChild(li);
+        });
+    });
 }
-#userInput { flex: 1; background: transparent; border: none; color: white; padding: 12px; outline: none; font-size: 16px; }
-.prompt { color: var(--neon-cyan); font-weight: bold; margin-right: 10px; }
-#sendBtn { background: var(--neon-cyan); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
-#sendBtn:hover { transform: scale(1.1); box-shadow: 0 0 15px var(--neon-cyan); }
-#sendBtn svg { width: 18px; fill: black; }
+
+function renderMessage(data, key) {
+    const chatBox = document.getElementById('chatBox');
+    const isMe = data.sender === currentUsername;
+    const div = document.createElement('div');
+    div.id = `msg-${key}`;
+    div.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
+    
+    div.innerHTML = `
+        <span class="msg-user">${data.sender.toUpperCase()}</span>
+        <div class="msg-content">${data.content}</div>
+        <div class="time-wrapper">
+            <span class="time">${data.time}</span>
+            <span class="status-dot status-${data.status || 'sent'}" id="dot-${key}"></span>
+        </div>
+    `;
+    chatBox.appendChild(div);
+    scrollToBottom();
+}
+
+function purgeData() {
+    if (confirm("!! PERMANENT PURGE !!\nErase all server records?")) {
+        remove(ref(db, 'messages')).then(() => {
+            document.getElementById('chatBox').innerHTML = '';
+        });
+    }
+}
+
+function scrollToBottom() {
+    const chatBox = document.getElementById('chatBox');
+    setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 50);
+}
+
+window.onfocus = () => { document.title = `Cyber Terminal v2.0`; };
