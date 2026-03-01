@@ -17,49 +17,36 @@ const db = getDatabase(app);
 let currentUsername = "";
 let isInitialLoad = true;
 
-// معالجة واجهة المستخدم والارتباطات
 document.addEventListener('DOMContentLoaded', () => {
-    // إصلاح مشكلة تسجيل الدخول
-    const loginBtn = document.getElementById('loginBtn');
-    if(loginBtn) loginBtn.onclick = login;
-
-    const userInputLogin = document.getElementById('usernameInput');
-    const passInputLogin = document.getElementById('passwordInput');
-    [userInputLogin, passInputLogin].forEach(el => {
-        el.onkeypress = (e) => { if (e.key === 'Enter') login(); };
-    });
-
-    // ربط الشات
-    document.getElementById('sendBtn').onclick = sendMessage;
-    document.getElementById('clearChatBtn').onclick = purgeData;
+    // إصلاح تسجيل الدخول
+    document.getElementById('loginBtn').onclick = login;
     
-    // القائمة الجانبية
+    // ربط الرسائل
+    document.getElementById('sendBtn').onclick = sendMessage;
+    document.getElementById('userInput').onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+    
+    // Purge
+    document.getElementById('clearChatBtn').onclick = () => {
+        if(confirm("Delete all data?")) remove(ref(db, 'messages'));
+    };
+
+    // Sidebar
     const sidebar = document.getElementById('sidebar');
-    const menuToggle = document.getElementById('menuToggle');
-    if(menuToggle) {
-        menuToggle.onclick = (e) => { e.stopPropagation(); sidebar.classList.add('active'); };
-    }
+    document.getElementById('menuToggle').onclick = (e) => { e.stopPropagation(); sidebar.classList.add('active'); };
     document.getElementById('closeSidebar').onclick = () => sidebar.classList.remove('active');
     document.body.onclick = () => sidebar.classList.remove('active');
-    
-    document.getElementById('userInput').onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
 });
 
 function login() {
     const user = document.getElementById('usernameInput').value.trim();
-    const pass = document.getElementById('passwordInput').value;
-    
-    if (user !== "" && pass === "1234") {
+    if (user !== "" && document.getElementById('passwordInput').value === "1234") {
         currentUsername = user.toLowerCase();
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appMain').style.display = 'flex';
         document.getElementById('headerUsername').innerText = `${currentUsername.toUpperCase()}@TERMINAL`;
         
-        // تحديث حالة الاتصال
-        const statusRef = ref(db, 'status/' + currentUsername);
-        set(statusRef, true);
-        onDisconnect(statusRef).remove();
-        
+        set(ref(db, 'status/' + currentUsername), true);
+        onDisconnect(ref(db, 'status/' + currentUsername)).remove();
         startApp();
     } else {
         document.getElementById('loginError').style.display = 'block';
@@ -70,94 +57,67 @@ function sendMessage() {
     const input = document.getElementById('userInput');
     const content = input.value.trim();
     if (content !== "") {
-        // فحص حالة الشبكة لتحديد Status ابتدائي
         onValue(ref(db, 'status'), (snapshot) => {
             const onlineCount = Object.keys(snapshot.val() || {}).length;
-            const initialStatus = onlineCount > 1 ? 'delivered' : 'sent';
-
             push(ref(db, 'messages'), {
                 sender: currentUsername,
                 content: content,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: initialStatus,
+                status: onlineCount > 1 ? 'delivered' : 'sent',
                 timestamp: serverTimestamp()
             });
         }, { onlyOnce: true });
-
         input.value = '';
-        input.focus();
     }
 }
 
 function startApp() {
-    // استلام الرسائل
     onChildAdded(ref(db, 'messages'), (snapshot) => {
         const data = snapshot.val();
-        const msgKey = snapshot.key;
-        renderMessage(data, msgKey);
-
-        // إذا استلمت رسالة من غيري، أحولها لـ Seen في السيرفر
-        if (data.sender !== currentUsername && data.status !== 'seen') {
-            update(ref(db, `messages/${msgKey}`), { status: 'seen' });
+        renderMessage(data, snapshot.key);
+        if (data.sender !== currentUsername) {
+            update(ref(db, `messages/${snapshot.key}`), { status: 'seen' });
         }
     });
 
-    // تحديث النقطة فوراً عند تغير الحالة في السيرفر
     onChildChanged(ref(db, 'messages'), (snapshot) => {
-        const data = snapshot.val();
         const dot = document.getElementById(`dot-${snapshot.key}`);
-        if (dot) {
-            dot.className = `status-dot status-${data.status}`;
-        }
+        if (dot) dot.className = `status-dot status-${snapshot.val().status}`;
     });
 
-    setTimeout(() => { isInitialLoad = false; scrollToBottom(); }, 1500);
-
-    // تحديث قائمة المتصلين
     onValue(ref(db, 'status'), (snapshot) => {
         const list = document.getElementById('usersList');
         list.innerHTML = '';
-        const onlineUsers = snapshot.val() || {};
-        Object.keys(onlineUsers).forEach(u => {
-            const li = document.createElement('li');
-            li.innerText = `● ${u.toUpperCase()}`;
+        Object.keys(snapshot.val() || {}).forEach(u => {
+            const li = document.createElement('li'); li.innerText = `● ${u.toUpperCase()}`;
             list.appendChild(li);
         });
     });
+
+    setTimeout(() => { isInitialLoad = false; scrollToBottom(); }, 1000);
 }
 
 function renderMessage(data, key) {
     const chatBox = document.getElementById('chatBox');
     const isMe = data.sender === currentUsername;
     const div = document.createElement('div');
-    div.id = `msg-${key}`;
     div.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
-    
     div.innerHTML = `
         <span class="msg-user">${data.sender.toUpperCase()}</span>
-        <div class="msg-content">${data.content}</div>
+        <div>${data.content}</div>
         <div class="time-wrapper">
-            <span class="time">${data.time}</span>
-            <span class="status-dot status-${data.status || 'sent'}" id="dot-${key}"></span>
+            <span>${data.time}</span>
+            <span class="status-dot status-${data.status}" id="dot-${key}"></span>
         </div>
     `;
     chatBox.appendChild(div);
     scrollToBottom();
 }
 
-function purgeData() {
-    if (confirm("!! PERMANENT PURGE !!\nThis action will erase ALL server logs. Continue?")) {
-        remove(ref(db, 'messages')).then(() => {
-            document.getElementById('chatBox').innerHTML = '';
-        });
-    }
-}
-
 function scrollToBottom() {
     const chatBox = document.getElementById('chatBox');
-    if(chatBox) {
-        setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 30);
-    }
+    // استخدام التايم أوت لضمان تحميل العنصر في المتصفح
+    setTimeout(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 50);
 }
-
-window.onfocus = () => { document.title = `Cyber Terminal v2.0`; };
