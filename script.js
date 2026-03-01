@@ -17,13 +17,28 @@ const db = getDatabase(app);
 let currentUsername = "";
 let isInitialLoad = true;
 
+// معالجة واجهة المستخدم والارتباطات
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('loginBtn').onclick = login;
+    // إصلاح مشكلة تسجيل الدخول
+    const loginBtn = document.getElementById('loginBtn');
+    if(loginBtn) loginBtn.onclick = login;
+
+    const userInputLogin = document.getElementById('usernameInput');
+    const passInputLogin = document.getElementById('passwordInput');
+    [userInputLogin, passInputLogin].forEach(el => {
+        el.onkeypress = (e) => { if (e.key === 'Enter') login(); };
+    });
+
+    // ربط الشات
     document.getElementById('sendBtn').onclick = sendMessage;
     document.getElementById('clearChatBtn').onclick = purgeData;
     
+    // القائمة الجانبية
     const sidebar = document.getElementById('sidebar');
-    document.getElementById('menuToggle').onclick = (e) => { e.stopPropagation(); sidebar.classList.add('active'); };
+    const menuToggle = document.getElementById('menuToggle');
+    if(menuToggle) {
+        menuToggle.onclick = (e) => { e.stopPropagation(); sidebar.classList.add('active'); };
+    }
     document.getElementById('closeSidebar').onclick = () => sidebar.classList.remove('active');
     document.body.onclick = () => sidebar.classList.remove('active');
     
@@ -32,15 +47,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function login() {
     const user = document.getElementById('usernameInput').value.trim();
-    if (user !== "" && document.getElementById('passwordInput').value === "1234") {
+    const pass = document.getElementById('passwordInput').value;
+    
+    if (user !== "" && pass === "1234") {
         currentUsername = user.toLowerCase();
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('appMain').style.display = 'flex';
         document.getElementById('headerUsername').innerText = `${currentUsername.toUpperCase()}@TERMINAL`;
         
+        // تحديث حالة الاتصال
         const statusRef = ref(db, 'status/' + currentUsername);
         set(statusRef, true);
         onDisconnect(statusRef).remove();
+        
         startApp();
     } else {
         document.getElementById('loginError').style.display = 'block';
@@ -51,7 +70,7 @@ function sendMessage() {
     const input = document.getElementById('userInput');
     const content = input.value.trim();
     if (content !== "") {
-        // فحص عدد المستخدمين Online لتحديد الحالة الابتدائية (Sent أو Delivered)
+        // فحص حالة الشبكة لتحديد Status ابتدائي
         onValue(ref(db, 'status'), (snapshot) => {
             const onlineCount = Object.keys(snapshot.val() || {}).length;
             const initialStatus = onlineCount > 1 ? 'delivered' : 'sent';
@@ -71,21 +90,19 @@ function sendMessage() {
 }
 
 function startApp() {
-    const chatBox = document.getElementById('chatBox');
-
     // استلام الرسائل
     onChildAdded(ref(db, 'messages'), (snapshot) => {
         const data = snapshot.val();
         const msgKey = snapshot.key;
         renderMessage(data, msgKey);
 
-        // إذا كانت الرسالة من طرف آخر، نحولها لـ seen
+        // إذا استلمت رسالة من غيري، أحولها لـ Seen في السيرفر
         if (data.sender !== currentUsername && data.status !== 'seen') {
             update(ref(db, `messages/${msgKey}`), { status: 'seen' });
         }
     });
 
-    // تحديث الحالة فوراً عند تغييرها في السيرفر (من Delivered لـ Seen مثلاً)
+    // تحديث النقطة فوراً عند تغير الحالة في السيرفر
     onChildChanged(ref(db, 'messages'), (snapshot) => {
         const data = snapshot.val();
         const dot = document.getElementById(`dot-${snapshot.key}`);
@@ -94,12 +111,14 @@ function startApp() {
         }
     });
 
-    setTimeout(() => { isInitialLoad = false; scrollToBottom(); }, 2000);
+    setTimeout(() => { isInitialLoad = false; scrollToBottom(); }, 1500);
 
+    // تحديث قائمة المتصلين
     onValue(ref(db, 'status'), (snapshot) => {
         const list = document.getElementById('usersList');
         list.innerHTML = '';
-        Object.keys(snapshot.val() || {}).forEach(u => {
+        const onlineUsers = snapshot.val() || {};
+        Object.keys(onlineUsers).forEach(u => {
             const li = document.createElement('li');
             li.innerText = `● ${u.toUpperCase()}`;
             list.appendChild(li);
@@ -127,7 +146,7 @@ function renderMessage(data, key) {
 }
 
 function purgeData() {
-    if (confirm("!! PERMANENT PURGE !!\nErase all server records?")) {
+    if (confirm("!! PERMANENT PURGE !!\nThis action will erase ALL server logs. Continue?")) {
         remove(ref(db, 'messages')).then(() => {
             document.getElementById('chatBox').innerHTML = '';
         });
@@ -136,7 +155,9 @@ function purgeData() {
 
 function scrollToBottom() {
     const chatBox = document.getElementById('chatBox');
-    setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 50);
+    if(chatBox) {
+        setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 30);
+    }
 }
 
 window.onfocus = () => { document.title = `Cyber Terminal v2.0`; };
