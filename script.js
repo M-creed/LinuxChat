@@ -98,3 +98,4 @@ function renderMessage(data) {
 }
 
 window.onfocus = () => document.title = `Cyber Terminal v2.0`;
+
