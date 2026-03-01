@@ -14,27 +14,28 @@
             <p class="status-msg">> Ready for link start...</p>
             <input type="text" id="usernameInput" placeholder="Identity Code" autofocus autocomplete="off">
             <input type="password" id="passwordInput" placeholder="Passcode (1234)">
-            <button id="loginBtn">LOG_IN</button>
+            <button id="loginBtn" type="button">LOG_IN</button>
             <p id="loginError" class="error-text">!! ACCESS DENIED !!</p>
         </div>
     </div>
 
     <div class="app-wrapper" id="appMain" style="display: none;">
+        
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <span>ACTIVE_NODES</span>
-                <button id="closeSidebar">×</button>
+                <button id="closeSidebar" type="button">×</button>
             </div>
             <ul id="usersList"></ul>
         </aside>
 
         <main class="chat-container">
             <header class="chat-header">
-                <button class="menu-toggle" id="menuToggle">☰ NODES</button>
+                <button class="menu-toggle" id="menuToggle" type="button">☰ NODES</button>
                 <div class="header-center">
                     <span class="glitch-text" id="headerUsername">GUEST@TERMINAL</span>
                 </div>
-                <button id="clearChatBtn" title="Clear Database">
+                <button id="clearChatBtn" title="Clear Database Permanently" type="button">
                     <svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                     <span>PURGE</span>
                 </button>
@@ -45,4 +46,15 @@
             <div class="input-wrapper">
                 <div class="input-area">
                     <span class="prompt">#</span>
-                    <input type="text" id="userInput" placeholder="
+                    <input type="text" id="userInput" placeholder="Execute command..." autocomplete="off">
+                    <button id="sendBtn" type="button">
+                        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
