@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, serverTimestamp } 
+import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, serverTimestamp, remove } 
        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -19,12 +19,21 @@ let isInitialLoad = true;
 
 if (Notification.permission !== "granted") Notification.requestPermission();
 
-// ربط الأزرار
+// ربط الأزرار عند التحميل
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loginBtn').onclick = login;
     document.getElementById('sendBtn').onclick = sendMessage;
-    document.getElementById('clearChatBtn').onclick = () => document.getElementById('chatBox').innerHTML = '';
     
+    // زر الحذف النهائي (PURGE)
+    document.getElementById('clearChatBtn').onclick = () => {
+        if (confirm("!! WARNING !!\nThis will permanently DELETE all server logs. Continue?")) {
+            remove(ref(db, 'messages')).then(() => {
+                document.getElementById('chatBox').innerHTML = '';
+            });
+        }
+    };
+    
+    // القائمة الجانبية
     const sidebar = document.getElementById('sidebar');
     document.getElementById('menuToggle').onclick = (e) => { e.stopPropagation(); sidebar.classList.add('active'); };
     document.getElementById('closeSidebar').onclick = () => sidebar.classList.remove('active');
@@ -62,6 +71,7 @@ function sendMessage() {
             timestamp: serverTimestamp()
         });
         input.value = '';
+        input.focus();
     }
 }
 
@@ -69,13 +79,21 @@ function startApp() {
     onChildAdded(ref(db, 'messages'), (snapshot) => {
         const data = snapshot.val();
         renderMessage(data);
+        
+        // تنبيهات للرسائل الجديدة
         if (!isInitialLoad && data.sender !== currentUsername) {
-            new Notification(`Secure Msg`, { body: `${data.sender}: ${data.content}` });
+            new Notification(`Terminal Alert`, { body: `${data.sender}: ${data.content}` });
             document.title = `(*) New Message`;
         }
     });
-    setTimeout(() => { isInitialLoad = false; }, 2000);
 
+    // انتهاء التحميل الأول بعد ثانيتين لتفعيل التنبيهات والسكرول النهائي
+    setTimeout(() => { 
+        isInitialLoad = false; 
+        scrollToBottom();
+    }, 2000);
+
+    // قائمة المتصلين
     onValue(ref(db, 'status'), (snapshot) => {
         const list = document.getElementById('usersList');
         list.innerHTML = '';
@@ -94,8 +112,14 @@ function renderMessage(data) {
     div.className = `message ${isMe ? 'my-msg' : 'client-msg'}`;
     div.innerHTML = `<span class="msg-user">${data.sender.toUpperCase()}</span>${data.content}<span class="time">${data.time}</span>`;
     chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    scrollToBottom();
+}
+
+function scrollToBottom() {
+    const chatBox = document.getElementById('chatBox');
+    setTimeout(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 50);
 }
 
 window.onfocus = () => document.title = `Cyber Terminal v2.0`;
-
